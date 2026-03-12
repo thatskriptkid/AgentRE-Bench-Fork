@@ -66,9 +66,13 @@ class AgentLoop:
 
         final_answer = None
         max_steps_hit = False
+        first_call = True
 
         while self.tool_call_count < self.max_tool_calls:
             try:
+                if not self.verbose and first_call:
+                    print(" (calling API...) ", end="", flush=True)
+                first_call = False
                 response = self.provider.create_message(
                     system=self.system_prompt,
                     messages=self.messages,
