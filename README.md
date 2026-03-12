@@ -1,4 +1,8 @@
-# AgentRE-Bench
+# AgentRE-Bench-Fork
+
+This project is a **fork** of the original [AgentRE-Bench](https://github.com/agentrebench/AgentRE-Bench) repository. In addition to the upstream benchmark, this fork adds **support for evaluating models on static analysis of Windows PE (Portable Executable) binaries**, using the same task structure and scoring as the ELF benchmark (see [Windows PE (--platform pe)](#windows-pe---platform-pe) below).
+
+---
 
 A benchmark for evaluating LLM agents on **long-horizon reverse engineering tasks** with deterministic scoring.
 

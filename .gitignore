@@ -1,4 +1,8 @@
+# Local env and secrets (never commit)
 .env
+.env.*
+!.env.example
+
 binaries/
 binaries_pe/
 results/
