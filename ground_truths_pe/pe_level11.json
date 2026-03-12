@@ -1,0 +1,25 @@
+{
+  "sample": "pe_level11",
+  "file_type": "PE32+",
+  "encoded_strings": false,
+  "decoded_c2": "192.168.1.100:4444",
+  "c2_ip": "192.168.1.100",
+  "c2_port": 4444,
+  "c2_protocol": "TCP",
+  "techniques": [
+    "CreateProcess_spawn",
+    "socket_connect",
+    "stdhandle_redirect",
+    "CreateProcess_shell",
+    "denial_of_service"
+  ],
+  "behavior": {
+    "parent_action": "multiple CreateProcess (bomb-like pattern)",
+    "child_action": "reverse_shell after Sleep(1000)",
+    "dual_purpose": true
+  },
+  "shell_path": "cmd.exe",
+  "confidence": 0.95,
+  "difficulty": 11,
+  "description": "Dual-purpose (Windows). Spawns multiple processes (CreateProcess) as DoS/distraction, then reverse shell to C2 via Winsock and CreateProcess cmd.exe. Analogous to ELF fork bomb + reverse shell."
+}

@@ -1,0 +1,34 @@
+{
+  "sample": "pe_level10",
+  "file_type": "PE32+",
+  "encoded_strings": true,
+  "decoded_c2": null,
+  "c2_ip": null,
+  "c2_port": null,
+  "c2_protocol": "TCP",
+  "techniques": [
+    "xor_encrypt",
+    "anti_analysis",
+    "VirtualAlloc_exec",
+    "env_check",
+    "runtime_decrypt"
+  ],
+  "encryption_details": {
+    "claimed_type": "AES",
+    "actual_type": "xor_multi_byte",
+    "key": "deadbeefcafebabe deadbeefcafebabe",
+    "key_hex": "0xdeadbeefcafebabe",
+    "key_length": 16
+  },
+  "anti_analysis": [
+    "STRACE_env_check",
+    "LT_TRACE_env_check"
+  ],
+  "obfuscation": {
+    "VirtualAlloc_rwx": true,
+    "runtime_decrypt": true
+  },
+  "confidence": 0.88,
+  "difficulty": 10,
+  "description": "Obfuscated encrypted payload (Windows). XOR decrypt with 16-byte key. Anti-analysis via GetEnvironmentVariable (STRACE, LT_TRACE). VirtualAlloc RWX, decrypt payload, execute. Same logic as ELF level10."
+}

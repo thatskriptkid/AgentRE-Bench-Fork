@@ -1,7 +1,10 @@
 .env
 binaries/
+binaries_pe/
 results/
+venv/
 __pycache__/
 *.pyc
 .DS_Store
 .claude/
+*.zip

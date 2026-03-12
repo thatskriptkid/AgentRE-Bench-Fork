@@ -1,0 +1,24 @@
+{
+  "sample": "pe_level3",
+  "file_type": "PE32+",
+  "encoded_strings": false,
+  "decoded_c2": "192.168.1.100:4444",
+  "c2_ip": "192.168.1.100",
+  "c2_port": 4444,
+  "c2_protocol": "TCP",
+  "techniques": [
+    "IsDebuggerPresent_anti_debug",
+    "delay_execution",
+    "socket_connect",
+    "stdhandle_redirect",
+    "CreateProcess_shell"
+  ],
+  "anti_analysis": [
+    "IsDebuggerPresent",
+    "random_delay_30_90s"
+  ],
+  "shell_path": "cmd.exe",
+  "confidence": 0.95,
+  "difficulty": 3,
+  "description": "Reverse shell with anti-debugging (Windows). Uses IsDebuggerPresent, delays execution 30-90 seconds (Sleep), then Winsock connect and CreateProcess cmd.exe."
+}

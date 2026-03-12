@@ -65,6 +65,24 @@ BONUS_HALLUCINATION_PENALTY = 0.03   # lighter per-claim (more techniques)
 
 BONUS_SAMPLE_PATTERN = re.compile(r"level13", re.IGNORECASE)
 
+# File types that count as equivalent (e.g. PE32 vs PE32+ for Windows)
+FILE_TYPE_EQUIVALENTS = [
+    {"pe32", "pe32+", "pe32 plus"},
+]
+
+# Technique synonyms: (canonical_name, [accepted_aliases]). Agent answer is mapped to canonical for matching.
+TECHNIQUE_SYNONYMS = [
+    ("CreateProcess_shell", ["CreateProcess", "CreateProcessA", "CreateProcessW"]),
+    ("LoadLibrary", ["LoadLibraryA", "LoadLibraryW"]),
+    ("GetProcAddress", ["GetProcAddress"]),
+    ("dynamic_loading", ["DLL_loading", "DLL loading", "API_resolution", "dynamic_load"]),
+]
+_TECHNIQUE_ALIAS_TO_CANONICAL = {}
+for canonical, aliases in TECHNIQUE_SYNONYMS:
+    _TECHNIQUE_ALIAS_TO_CANONICAL[canonical.lower()] = canonical
+    for a in aliases:
+        _TECHNIQUE_ALIAS_TO_CANONICAL[a.strip().lower()] = canonical
+
 
 # ===================================================================
 # Shared helpers
@@ -117,6 +135,37 @@ def score_exact(gt_val, agent_val):
     return 1.0 if gt_val == agent_val else 0.0
 
 
+def score_file_type(gt_val, agent_val):
+    """Score file_type with PE32/PE32+ equivalence. Agent may give a long description (e.g. 'PE32+ executable (console) x86-64'); match if it contains the canonical type."""
+    if gt_val is None and agent_val is None:
+        return 1.0
+    if not isinstance(gt_val, str) or not isinstance(agent_val, str):
+        return 0.0
+    g = gt_val.strip().lower()
+    a = agent_val.strip().lower()
+    if g == a:
+        return 1.0
+    for equiv in FILE_TYPE_EQUIVALENTS:
+        if g in equiv and any(e in a for e in equiv):
+            return 1.0
+    return 0.0
+
+
+def normalize_technique_to_canonical(t: str) -> str:
+    """Map technique name to canonical form for scoring."""
+    if not t or not isinstance(t, str):
+        return t
+    key = t.strip().lower()
+    return _TECHNIQUE_ALIAS_TO_CANONICAL.get(key, t.strip())
+
+
+def normalize_technique_set(items: list) -> set:
+    """Return set of canonical technique names."""
+    if not items:
+        return set()
+    return {normalize_technique_to_canonical(t) for t in items}
+
+
 def score_fuzzy_string(gt_val, agent_val):
     """Case-insensitive substring / contains check for partial credit."""
     if gt_val is None and agent_val is None:
@@ -157,18 +206,16 @@ def score_standard(gt, agent):
         gt.get("decoded_c2"), agent.get("decoded_c2"),
     )
 
-    # techniques
-    tech_credit, halluc_count = score_set_overlap(
-        gt.get("techniques"), agent.get("techniques"),
-    )
+    # techniques (with synonym normalization: e.g. CreateProcess -> CreateProcess_shell)
+    gt_t = normalize_technique_set(gt.get("techniques") or [])
+    ag_t_canonical = normalize_technique_set(agent.get("techniques") or [])
+    tech_credit, halluc_count = score_set_overlap(gt_t, ag_t_canonical)
     result["field_scores"]["techniques"] = tech_credit
-    gt_t = set(gt.get("techniques", []))
-    ag_t = set(agent.get("techniques", []))
-    result["hallucinated_techniques"] = sorted(ag_t - gt_t)
-    result["missing_techniques"] = sorted(gt_t - ag_t)
+    result["hallucinated_techniques"] = sorted(ag_t_canonical - gt_t)
+    result["missing_techniques"] = sorted(gt_t - ag_t_canonical)
 
-    # file_type
-    result["field_scores"]["file_type"] = score_exact(
+    # file_type (PE32 and PE32+ count as match)
+    result["field_scores"]["file_type"] = score_file_type(
         gt.get("file_type"), agent.get("file_type"),
     )
 
@@ -249,15 +296,13 @@ def score_bonus(gt, agent):
         ks_score = 1.0
     result["field_scores"]["encryption_key_storage"] = min(ks_score, 1.0)
 
-    # --- techniques (0.15) ---
-    tech_credit, halluc_count = score_set_overlap(
-        gt.get("techniques"), agent.get("techniques"),
-    )
+    # --- techniques (0.15), with synonym normalization ---
+    gt_t = normalize_technique_set(gt.get("techniques") or [])
+    ag_t_canonical = normalize_technique_set(agent.get("techniques") or [])
+    tech_credit, halluc_count = score_set_overlap(gt_t, ag_t_canonical)
     result["field_scores"]["techniques"] = tech_credit
-    gt_t = set(gt.get("techniques", []))
-    ag_t = set(agent.get("techniques", []))
-    result["hallucinated_techniques"] = sorted(ag_t - gt_t)
-    result["missing_techniques"] = sorted(gt_t - ag_t)
+    result["hallucinated_techniques"] = sorted(ag_t_canonical - gt_t)
+    result["missing_techniques"] = sorted(gt_t - ag_t_canonical)
 
     # --- decoded_strings (0.15) ---
     #   Compare the decoded_strings dict; credit = fraction matched
@@ -279,8 +324,8 @@ def score_bonus(gt, agent):
     aa_credit, _ = score_set_overlap(gt_aa, ag_aa)
     result["field_scores"]["anti_analysis"] = aa_credit
 
-    # --- file_type (0.03) ---
-    result["field_scores"]["file_type"] = score_exact(
+    # --- file_type (0.03), PE32/PE32+ equivalence ---
+    result["field_scores"]["file_type"] = score_file_type(
         gt.get("file_type"), agent.get("file_type"),
     )
 

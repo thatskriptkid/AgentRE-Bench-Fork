@@ -9,11 +9,17 @@ ENV_KEY_MAP = {
     "openai": "OPENAI_API_KEY",
     "gemini": "GOOGLE_API_KEY",
     "deepseek": "DEEPSEEK_API_KEY",
+    "qwen": "DASHSCOPE_API_KEY",
 }
 
-DEFAULT_TOOLS = [
+DEFAULT_TOOLS_ELF = [
     "file", "strings", "readelf", "objdump", "nm", "hexdump", "xxd", "entropy",
 ]
+DEFAULT_TOOLS_PE = [
+    "file", "strings", "peinfo", "pedisasm", "pesymbols", "hexdump", "xxd", "pe_entropy",
+]
+# Backward compatibility
+DEFAULT_TOOLS = DEFAULT_TOOLS_ELF
 
 
 def _load_dotenv(project_root: Path) -> None:
@@ -42,7 +48,7 @@ def _load_dotenv(project_root: Path) -> None:
 @dataclass
 class BenchmarkConfig:
     project_root: Path
-    workspace_dir: Path          # binaries/
+    workspace_dir: Path          # binaries/ or binaries_pe/
     ground_truths_dir: Path
 
     model: str = "claude-opus-4-6"
@@ -57,7 +63,9 @@ class BenchmarkConfig:
     docker_image: str = "agentre-bench-tools:latest"
     use_docker: bool = True
 
-    allowed_tools: list[str] = field(default_factory=lambda: list(DEFAULT_TOOLS))
+    # "elf" = Linux ELF binaries (readelf, objdump, nm, entropy); "pe" = Windows PE (peinfo, pedisasm, etc.)
+    platform: str = "elf"
+    allowed_tools: list[str] = field(default_factory=list)
 
     results_dir: Path = field(default=None)
     verbose: bool = False
@@ -67,10 +75,18 @@ class BenchmarkConfig:
         self.workspace_dir = Path(self.workspace_dir).resolve()
         self.ground_truths_dir = Path(self.ground_truths_dir).resolve()
 
+        if not self.allowed_tools:
+            self.allowed_tools = (
+                list(DEFAULT_TOOLS_PE) if self.platform == "pe" else list(DEFAULT_TOOLS_ELF)
+            )
+
         if self.results_dir is None:
-            # Namespace by provider/model to avoid overwriting across runs
+            # Namespace by provider/model (and platform) to avoid overwriting across runs
             safe_model = self.model.replace("/", "_").replace(":", "_")
-            self.results_dir = self.project_root / "results" / f"{self.provider}_{safe_model}"
+            subdir = f"{self.provider}_{safe_model}"
+            if self.platform == "pe":
+                subdir = f"pe_{subdir}"
+            self.results_dir = self.project_root / "results" / subdir
         else:
             self.results_dir = Path(self.results_dir).resolve()
 

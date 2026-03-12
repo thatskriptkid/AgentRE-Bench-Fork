@@ -192,6 +192,89 @@ TOOL_SCHEMAS = [
             "required": ["path"],
         },
     },
+    # ── PE (Windows) tools ─────────────────────────────────────────────────
+    {
+        "name": "peinfo",
+        "description": (
+            "Display PE (Windows) binary information: headers, sections, imports, exports. "
+            "Use mode: headers, sections, imports, exports, or all."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Path to the PE file.",
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": ["headers", "sections", "imports", "exports", "all"],
+                    "description": "Output mode (default: all).",
+                },
+            },
+            "required": ["path"],
+        },
+    },
+    {
+        "name": "pedisasm",
+        "description": (
+            "Disassemble a PE (Windows) executable. "
+            "Shows machine code and assembly for the binary."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Path to the PE file.",
+                },
+            },
+            "required": ["path"],
+        },
+    },
+    {
+        "name": "pesymbols",
+        "description": (
+            "List imports and exports of a PE (Windows) file. "
+            "Shows DLL imports and exported symbols."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Path to the PE file.",
+                },
+            },
+            "required": ["path"],
+        },
+    },
+    {
+        "name": "pe_entropy",
+        "description": (
+            "Compute Shannon entropy for a PE file (whole or per section). "
+            "High entropy indicates encrypted/compressed data; low entropy indicates plaintext. "
+            "Optionally target a PE section (e.g. .text, .rdata, .data)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Path to the PE file.",
+                },
+                "section": {
+                    "type": "string",
+                    "description": "Optional PE section name (e.g. .text, .rdata, .data).",
+                },
+                "window_size": {
+                    "type": "integer",
+                    "description": "Sliding window size in bytes (default 256).",
+                },
+            },
+            "required": ["path"],
+        },
+    },
     {
         "name": "final_answer",
         "description": (
@@ -451,6 +534,34 @@ class ToolExecutor:
                 path, section, window,
             ]
 
+        if tool_name == "peinfo":
+            mode = args.get("mode", "all")
+            if self.config.use_docker:
+                return ["python3", "/opt/pe_tools/peinfo.py", path, mode]
+            venv_python = self.config.project_root / "venv" / "bin" / "python"
+            script = self.config.project_root / "scripts" / "pe_tools" / "peinfo.py"
+            return [str(venv_python), str(script), path, mode]
+
+        if tool_name == "pedisasm":
+            # objdump can disassemble PE on Linux (binutils)
+            return ["objdump", "-d", path]
+
+        if tool_name == "pesymbols":
+            if self.config.use_docker:
+                return ["python3", "/opt/pe_tools/pesymbols.py", path]
+            venv_python = self.config.project_root / "venv" / "bin" / "python"
+            script = self.config.project_root / "scripts" / "pe_tools" / "pesymbols.py"
+            return [str(venv_python), str(script), path]
+
+        if tool_name == "pe_entropy":
+            section = args.get("section", "")
+            window = str(args.get("window_size", 256))
+            if self.config.use_docker:
+                return ["python3", "/opt/pe_tools/pe_entropy.py", path, section, str(window)]
+            venv_python = self.config.project_root / "venv" / "bin" / "python"
+            script = self.config.project_root / "scripts" / "pe_tools" / "pe_entropy.py"
+            return [str(venv_python), str(script), path, section, str(window)]
+
         raise ValueError(f"Unknown tool: {tool_name!r}")
 
     def _format_result(self, result: RunResult) -> dict[str, Any]:
@@ -475,10 +586,19 @@ class ToolExecutor:
         }
 
 
-def get_tool_schemas(include_final_answer: bool = True) -> list[dict]:
-    if include_final_answer:
-        return list(TOOL_SCHEMAS)
-    return [t for t in TOOL_SCHEMAS if t["name"] != "final_answer"]
+def get_tool_schemas(
+    include_final_answer: bool = True,
+    allowed_tools: list[str] | None = None,
+) -> list[dict]:
+    schemas = list(TOOL_SCHEMAS)
+    if allowed_tools is not None:
+        allowed_set = set(allowed_tools)
+        if include_final_answer:
+            allowed_set.add("final_answer")
+        schemas = [t for t in schemas if t["name"] in allowed_set]
+    elif not include_final_answer:
+        schemas = [t for t in schemas if t["name"] != "final_answer"]
+    return schemas
 
 
 def schemas_to_openai(schemas: list[dict]) -> list[dict]:

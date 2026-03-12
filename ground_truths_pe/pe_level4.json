@@ -1,0 +1,23 @@
+{
+  "sample": "pe_level4",
+  "file_type": "PE32+",
+  "encoded_strings": false,
+  "decoded_c2": null,
+  "c2_ip": null,
+  "c2_port": null,
+  "c2_protocol": "TCP",
+  "techniques": [
+    "polymorphic_shellcode",
+    "nop_sled",
+    "VirtualAlloc_exec",
+    "executable_memory"
+  ],
+  "shellcode_details": {
+    "nop_sled_size": "256-768 bytes (randomized)",
+    "memory_api": "VirtualAlloc RWX",
+    "creates_socket": false
+  },
+  "confidence": 0.90,
+  "difficulty": 4,
+  "description": "Polymorphic-style executable memory (Windows). Allocates VirtualAlloc RWX, fills with randomized NOP sled and stub. Executes as function pointer. Pattern analogous to Linux polymorphic shellcode."
+}

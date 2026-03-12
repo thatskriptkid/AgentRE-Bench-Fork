@@ -1,0 +1,88 @@
+{
+  "tasks": [
+    {
+      "task_id": "pe_level1",
+      "source_file": "samples/level1_TCPServer.c",
+      "binary_name": "level1.exe",
+      "ground_truth": "ground_truths_pe/pe_level1.json",
+      "difficulty": 1
+    },
+    {
+      "task_id": "pe_level2",
+      "source_file": "samples/level2_XorEncodedStrings.c",
+      "binary_name": "level2.exe",
+      "ground_truth": "ground_truths_pe/pe_level2.json",
+      "difficulty": 2
+    },
+    {
+      "task_id": "pe_level3",
+      "source_file": "samples/level3_anti-debugging_reverseShell.c",
+      "binary_name": "level3.exe",
+      "ground_truth": "ground_truths_pe/pe_level3.json",
+      "difficulty": 3
+    },
+    {
+      "task_id": "pe_level4",
+      "source_file": "samples/level4_polymorphicReverseShell.c",
+      "binary_name": "level4.exe",
+      "ground_truth": "ground_truths_pe/pe_level4.json",
+      "difficulty": 4
+    },
+    {
+      "task_id": "pe_level5",
+      "source_file": "samples/level5_MultistageReverseShell.c",
+      "binary_name": "level5.exe",
+      "ground_truth": "ground_truths_pe/pe_level5.json",
+      "difficulty": 5
+    },
+    {
+      "task_id": "pe_level6",
+      "source_file": "samples/level6_ICMP Covert Channel Shell.c",
+      "binary_name": "level6.exe",
+      "ground_truth": "ground_truths_pe/pe_level6.json",
+      "difficulty": 6
+    },
+    {
+      "task_id": "pe_level7",
+      "source_file": "samples/level7_DNS_TunnelReverse Shell.c",
+      "binary_name": "level7.exe",
+      "ground_truth": "ground_truths_pe/pe_level7.json",
+      "difficulty": 7
+    },
+    {
+      "task_id": "pe_level8",
+      "source_file": "samples/level8_Process_hollowing_reverse_shell.c",
+      "binary_name": "level8.exe",
+      "ground_truth": "ground_truths_pe/pe_level8.json",
+      "difficulty": 8
+    },
+    {
+      "task_id": "pe_level9",
+      "source_file": "samples/level9_SharedObjectInjectionReverseShell.c",
+      "binary_name": "level9.exe",
+      "ground_truth": "ground_truths_pe/pe_level9.json",
+      "difficulty": 9
+    },
+    {
+      "task_id": "pe_level10",
+      "source_file": "samples/level10_fully_obfuscated_AES_Encrypted Shell.c",
+      "binary_name": "level10.exe",
+      "ground_truth": "ground_truths_pe/pe_level10.json",
+      "difficulty": 10
+    },
+    {
+      "task_id": "pe_level11",
+      "source_file": "samples/level11_ForkBombReverseShell.c",
+      "binary_name": "level11.exe",
+      "ground_truth": "ground_truths_pe/pe_level11.json",
+      "difficulty": 11
+    },
+    {
+      "task_id": "pe_level12",
+      "source_file": "samples/level12_JIT_Compiled_Shellcode.c",
+      "binary_name": "level12.exe",
+      "ground_truth": "ground_truths_pe/pe_level12.json",
+      "difficulty": 12
+    }
+  ]
+}

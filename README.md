@@ -2,7 +2,7 @@
 
 A benchmark for evaluating LLM agents on **long-horizon reverse engineering tasks** with deterministic scoring.
 
-> **Platform:** Linux/Unix (ELF x86-64). Windows PE support planned for a future release.
+> **Platform:** Linux/Unix (ELF x86-64). Windows PE supported via `--platform pe`.
 
 AgentRE-Bench gives an LLM agent a compiled ELF binary and a set of Linux static analysis tools (strings, objdump, readelf, etc.), then measures how well it can identify C2 infrastructure, encoding schemes, anti-analysis techniques, and communication protocols — all without human guidance.
 
@@ -156,6 +156,7 @@ harness/
     openai_provider.py        GPT (raw HTTP to Chat Completions API)
     gemini.py                 Gemini (raw HTTP to GenerativeAI API)
     deepseek.py               DeepSeek (extends OpenAI-compatible provider)
+    qwen.py                   Alibaba Qwen (DashScope OpenAI-compatible)
 
 scorer.py                     Deterministic scorer (standalone + used by harness)
 tasks.json                    Task manifest (13 entries)
@@ -163,7 +164,7 @@ build_binaries.sh             Docker cross-compile script
 Dockerfile.tools              Sandboxed tool execution image
 ```
 
-**Zero Python dependencies.** All LLM provider calls use Python's built-in `urllib.request`. No SDKs required.
+**Zero Python dependencies** for ELF mode. All LLM provider calls use Python's built-in `urllib.request`. No SDKs required. PE mode requires `pefile` (see [requirements-pe.txt](requirements-pe.txt)).
 
 ### Tool Sandbox
 
@@ -245,18 +246,35 @@ python run_benchmark.py --all --provider anthropic --model claude-opus-4-6
 python run_benchmark.py --all --provider openai --model gpt-4o
 python run_benchmark.py --all --provider gemini --model gemini-2.0-flash
 python run_benchmark.py --all --provider deepseek --model deepseek-chat
+python run_benchmark.py --all --provider qwen --model qwen3-coder-plus
 
 # Custom output directory
 python run_benchmark.py --all --report results/opus_run1/
+
+# Windows PE binaries (optional)
+python run_benchmark.py --all --platform pe
+python run_benchmark.py --platform pe --task pe_level1 -v
 ```
+
+### Windows PE (--platform pe)
+
+To test **Windows PE** binaries:
+
+1. **Build 12 PE binaries**: run `./build_win_binaries.sh`. This compiles the same sources from `samples/` (level1_TCPServer.c … level12_JIT_Compiled_Shellcode.c) with MinGW-w64 to `binaries_pe/level1.exe` … `level12.exe`. Windows code is selected via `#ifdef _WIN32` in those files. Requires `mingw-w64` (e.g. `apt install mingw-w64`) or Docker.
+2. Define tasks in `tasks_pe.json` and ground truths in `ground_truths_pe/` (included for the 12 levels).
+3. Create a venv and install PE tools: `./venv/bin/pip install -r requirements-pe.txt`
+4. Run with `--platform pe` (uses tools: peinfo, pedisasm, pesymbols, pe_entropy, file, strings, hexdump, xxd).
+
+With Docker, the tools image includes `pefile` and PE scripts. Without Docker, Python is run from `./venv/bin/python`.
 
 ### CLI Flags
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--all` | | Run all 13 tasks |
+| `--all` | | Run all tasks |
 | `--task ID` | | Run a single task by ID |
-| `--provider` | `anthropic` | `anthropic`, `openai`, `gemini`, `deepseek` |
+| `--platform` | `elf` | `elf` (Linux ELF) or `pe` (Windows PE) |
+| `--provider` | `anthropic` | `anthropic`, `openai`, `gemini`, `deepseek`, `qwen` |
 | `--model` | per-provider | Model name |
 | `--api-key` | from .env | API key override |
 | `--report DIR` | `results/` | Output directory |
@@ -287,6 +305,16 @@ python scorer.py -g ground_truths/level1_TCPServer.json \
 python scorer.py -G ground_truths/ -A agent_outputs/ -r report.json
 ```
 
+## Testing
+
+Run the scorer unit tests from the project root (no extra dependencies):
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Tests cover `score_file_type` (PE32/PE32+ equivalence), technique synonym normalization, and full standard scoring.
+
 ## Known Limitations
 
 - **Static analysis only** — no dynamic execution, debugging, or sandboxed runtime. Tests static RE reasoning specifically.
@@ -294,14 +322,14 @@ python scorer.py -G ground_truths/ -A agent_outputs/ -r report.json
 - **Fixed tool set** — agents can't install tools, write scripts, or use Ghidra/IDA. Standardizes evaluation but limits agent creativity.
 - **Single-agent** — no multi-agent collaboration or human-in-the-loop.
 - **Token cost** — a full 13-task run uses ~5-10M tokens on frontier models. Budget accordingly.
-- **Linux/Unix only** — all binaries are ELF x86-64 targeting Linux/Unix systems. No Windows PE, ARM, or MIPS samples yet.
+- **Linux/Unix default** — default binaries are ELF x86-64. Windows PE is supported via `--platform pe` (see above).
 
 ## Roadmap
 
 - **Failure taxonomy** — systematic categorization of failure modes across models
 - **Baseline comparisons** — published results for Claude, GPT, Gemini, and open models
 - **Dynamic analysis tools** — strace, ltrace, sandboxed execution
-- **Windows PE support** — Windows binaries, ARM targets, packed samples
+- **More PE samples** — expand `tasks_pe.json` and ground truths for Windows
 - **Multi-turn refinement** — tasks requiring iterative hypothesis refinement
 - **Public leaderboard** — model comparison across providers and versions
 

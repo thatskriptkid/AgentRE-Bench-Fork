@@ -1,0 +1,3 @@
+# Optional: for PE (Windows) binary analysis when using --platform pe
+# Install in project venv: ./venv/bin/pip install -r requirements-pe.txt
+pefile>=2023.2.7

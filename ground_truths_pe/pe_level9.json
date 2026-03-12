@@ -1,0 +1,23 @@
+{
+  "sample": "pe_level9",
+  "file_type": "PE32+",
+  "encoded_strings": false,
+  "decoded_c2": null,
+  "c2_ip": "192.168.1.100",
+  "c2_port": 4444,
+  "c2_protocol": "TCP",
+  "techniques": [
+    "LoadLibrary",
+    "GetProcAddress",
+    "dynamic_loading"
+  ],
+  "injection_details": {
+    "library_type": "DLL",
+    "activation": "main executable",
+    "api_used": "LoadLibraryA, GetProcAddress",
+    "example_dll": "kernel32.dll"
+  },
+  "confidence": 0.94,
+  "difficulty": 9,
+  "description": "Dynamic loading pattern (Windows). EXE uses LoadLibrary/GetProcAddress (kernel32.dll) instead of static imports. Analogous to ELF shared object injection / dlsym; Windows port is single EXE demonstrating same pattern."
+}

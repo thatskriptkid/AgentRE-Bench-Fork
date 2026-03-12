@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import urllib.error
 import urllib.request
 
 from .base import AgentProvider, ProviderResponse, ToolCall
@@ -51,8 +52,17 @@ class OpenAIProvider(AgentProvider):
         url = f"{self.base_url}/chat/completions"
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
 
-        with urllib.request.urlopen(req, timeout=300) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            try:
+                err = json.loads(body)
+                msg = err.get("error", {}).get("message", body) if isinstance(err.get("error"), dict) else body
+            except Exception:
+                msg = body or e.reason
+            raise RuntimeError(f"HTTP {e.code} {e.reason}: {msg}") from e
 
         choice = result["choices"][0]
         message = choice["message"]

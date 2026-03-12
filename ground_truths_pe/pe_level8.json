@@ -1,0 +1,22 @@
+{
+  "sample": "pe_level8",
+  "file_type": "PE32+",
+  "encoded_strings": false,
+  "decoded_c2": null,
+  "c2_ip": null,
+  "c2_port": null,
+  "c2_protocol": "TCP",
+  "techniques": [
+    "process_hollowing",
+    "CreateProcess_suspended",
+    "ResumeThread"
+  ],
+  "process_hollowing_details": {
+    "target_process": "cmd.exe",
+    "injection_method": "CREATE_SUSPENDED then ResumeThread",
+    "detach_after_inject": true
+  },
+  "confidence": 0.92,
+  "difficulty": 8,
+  "description": "Process hollowing pattern (Windows). Creates process with CREATE_SUSPENDED (e.g. cmd timeout). Would typically NtUnmapViewOfSection, VirtualAllocEx, WriteProcessMemory, SetThreadContext; here simplified to suspend/resume."
+}

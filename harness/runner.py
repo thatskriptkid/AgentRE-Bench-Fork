@@ -29,16 +29,23 @@ class TaskConfig:
     difficulty: int
 
 
-def load_tasks(manifest_path: Path, project_root: Path) -> list[TaskConfig]:
+def load_tasks(
+    manifest_path: Path,
+    project_root: Path,
+    workspace_dir: Path | None = None,
+) -> list[TaskConfig]:
     with open(manifest_path) as f:
         data = json.load(f)
+
+    if workspace_dir is None:
+        workspace_dir = project_root / "binaries"
 
     tasks = []
     for entry in data["tasks"]:
         tasks.append(
             TaskConfig(
                 task_id=entry["task_id"],
-                binary_path=project_root / "binaries" / entry["binary_name"],
+                binary_path=workspace_dir / entry["binary_name"],
                 ground_truth_path=project_root / entry["ground_truth"],
                 difficulty=entry["difficulty"],
             )
@@ -46,8 +53,8 @@ def load_tasks(manifest_path: Path, project_root: Path) -> list[TaskConfig]:
     return tasks
 
 
-SYSTEM_PROMPT_TEMPLATE = """\
-You are an expert reverse engineer analyzing a binary executable.
+SYSTEM_PROMPT_ELF = """\
+You are an expert reverse engineer analyzing a binary executable (ELF format).
 
 Your task is to analyze the binary located at: {binary_path}
 
@@ -64,6 +71,27 @@ When you have completed your analysis, call the **final_answer** tool with your 
 Be precise with technique names — only claim techniques you have evidence for.
 Do not guess or hallucinate techniques you cannot confirm from the binary analysis.
 """
+
+SYSTEM_PROMPT_PE = """\
+You are an expert reverse engineer analyzing a Windows PE (Portable Executable) binary.
+
+Your task is to analyze the binary located at: {binary_path}
+
+Use the available tools (peinfo, pedisasm, pesymbols, pe_entropy, file, strings, hexdump, xxd) to examine the PE and determine:
+1. **File type** (e.g. PE32, PE32+)
+2. **Whether strings are encoded/encrypted** (true/false)
+3. **The decoded C2 (command and control) address** — the IP:port or URL the binary connects to
+4. **Techniques used** — specific techniques (e.g. socket_connect, LoadLibrary, CreateProcess, anti_debug)
+5. **C2 protocol** — the communication protocol (TCP, HTTP, DNS, etc.)
+
+{bonus_instructions}
+
+When you have completed your analysis, call the **final_answer** tool with your findings.
+Be precise with technique names — only claim techniques you have evidence for.
+Do not guess or hallucinate techniques you cannot confirm from the binary analysis.
+"""
+
+SYSTEM_PROMPT_TEMPLATE = SYSTEM_PROMPT_ELF  # default, overridden by build_system_prompt
 
 BONUS_INSTRUCTIONS = """\
 This is an advanced sample. In addition to the standard fields, also determine:
@@ -82,8 +110,9 @@ def build_system_prompt(task: TaskConfig, config: BenchmarkConfig) -> str:
         binary_display = str(task.binary_path)
 
     bonus = BONUS_INSTRUCTIONS if task.difficulty >= 13 else ""
+    template = SYSTEM_PROMPT_PE if config.platform == "pe" else SYSTEM_PROMPT_ELF
 
-    return SYSTEM_PROMPT_TEMPLATE.format(
+    return template.format(
         binary_path=binary_display,
         bonus_instructions=bonus,
     )
@@ -119,6 +148,7 @@ def run_single_task(
         max_tool_calls=config.max_tool_calls,
         max_tokens=config.max_tokens,
         verbose=config.verbose,
+        allowed_tools=config.allowed_tools,
     )
     agent_result = agent_loop.run()
 
@@ -170,9 +200,16 @@ def run_single_task(
 def run_benchmark(
     config: BenchmarkConfig,
     task_filter: str | None = None,
+    manifest_path: Path | None = None,
+    workspace_dir: Path | None = None,
 ) -> tuple[AggregateMetrics, list[TaskMetrics], list[dict]]:
-    manifest_path = config.project_root / "tasks.json"
-    tasks = load_tasks(manifest_path, config.project_root)
+    if manifest_path is None:
+        manifest_path = config.project_root / (
+            "tasks_pe.json" if config.platform == "pe" else "tasks.json"
+        )
+    if workspace_dir is None:
+        workspace_dir = config.workspace_dir
+    tasks = load_tasks(manifest_path, config.project_root, workspace_dir=workspace_dir)
 
     if task_filter:
         tasks = [t for t in tasks if t.task_id == task_filter]
@@ -183,9 +220,10 @@ def run_benchmark(
     mode = "docker" if config.use_docker else "local"
 
     # Banner
+    platform_label = "PE (Windows)" if config.platform == "pe" else "ELF"
     print(f"\n{'='*60}")
     print(f"  AgentRE-Bench")
-    print(f"  {config.provider}/{config.model} | {total} task{'s' if total != 1 else ''} | {mode}")
+    print(f"  {config.provider}/{config.model} | {total} task{'s' if total != 1 else ''} | {platform_label} | {mode}")
     print(f"{'='*60}")
 
     all_metrics: list[TaskMetrics] = []

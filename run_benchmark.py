@@ -7,12 +7,14 @@ API keys are loaded from .env in the project root. Create one with:
     OPENAI_API_KEY=sk-...
     GOOGLE_API_KEY=AI...
     DEEPSEEK_API_KEY=sk-...
+    DASHSCOPE_API_KEY=sk-...   # Alibaba Qwen
 
 Then just pick a provider/model:
     python run_benchmark.py --all --provider anthropic --model claude-opus-4-6
     python run_benchmark.py --all --provider openai --model gpt-4o
     python run_benchmark.py --all --provider gemini --model gemini-2.0-flash
     python run_benchmark.py --all --provider deepseek --model deepseek-chat
+    python run_benchmark.py --all --provider qwen --model qwen3-coder-plus
     python run_benchmark.py --task level1_TCPServer --model claude-opus-4-6
     python run_benchmark.py --task level1_TCPServer --model claude-opus-4-6 -v
 """
@@ -35,7 +37,7 @@ def main():
     group.add_argument(
         "--all",
         action="store_true",
-        help="Run all 13 tasks",
+        help="Run all tasks (13 for ELF, 12 for PE)",
     )
     group.add_argument(
         "--task",
@@ -47,7 +49,7 @@ def main():
         "--provider",
         type=str,
         default="anthropic",
-        choices=["anthropic", "openai", "gemini", "deepseek"],
+        choices=["anthropic", "openai", "gemini", "deepseek", "qwen"],
         help="LLM provider (default: anthropic)",
     )
     parser.add_argument(
@@ -81,6 +83,13 @@ def main():
         help="Max tokens per LLM response (default: 4096)",
     )
     parser.add_argument(
+        "--platform",
+        type=str,
+        default="elf",
+        choices=["elf", "pe"],
+        help="Binary platform: elf (Linux ELF) or pe (Windows PE). Default: elf.",
+    )
+    parser.add_argument(
         "--no-docker",
         action="store_true",
         help="Run tools via subprocess instead of Docker",
@@ -102,15 +111,24 @@ def main():
         "openai": "gpt-4o",
         "gemini": "gemini-2.0-flash",
         "deepseek": "deepseek-chat",
+        "qwen": "qwen3-coder-plus",
     }
     model = args.model or model_defaults.get(args.provider, "claude-opus-4-6")
 
     project_root = Path(__file__).parent.resolve()
+    platform = args.platform
+
+    if platform == "pe":
+        workspace_dir = project_root / "binaries_pe"
+        ground_truths_dir = project_root / "ground_truths_pe"
+    else:
+        workspace_dir = project_root / "binaries"
+        ground_truths_dir = project_root / "ground_truths"
 
     config = BenchmarkConfig(
         project_root=project_root,
-        workspace_dir=project_root / "binaries",
-        ground_truths_dir=project_root / "ground_truths",
+        workspace_dir=workspace_dir,
+        ground_truths_dir=ground_truths_dir,
         model=model,
         provider=args.provider,
         api_key=args.api_key,
@@ -119,13 +137,18 @@ def main():
         use_docker=not args.no_docker,
         results_dir=Path(args.report) if args.report else None,
         verbose=args.verbose,
+        platform=platform,
     )
 
     # Validate
     if not config.workspace_dir.exists():
+        hint = (
+            "Create binaries_pe/ and add PE samples, and tasks_pe.json + ground_truths_pe/."
+            if platform == "pe"
+            else "Run ./build_binaries.sh first to compile the samples."
+        )
         print(
-            f"Error: binaries directory not found at {config.workspace_dir}\n"
-            f"Run ./build_binaries.sh first to compile the samples.",
+            f"Error: workspace not found at {config.workspace_dir}\n{hint}",
             file=sys.stderr,
         )
         sys.exit(1)

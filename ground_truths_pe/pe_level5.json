@@ -1,0 +1,26 @@
+{
+  "sample": "pe_level5",
+  "file_type": "PE32+",
+  "encoded_strings": true,
+  "decoded_c2": "192.168.1.100:4444",
+  "c2_ip": "192.168.1.100",
+  "c2_port": 4444,
+  "c2_protocol": "TCP",
+  "techniques": [
+    "multistage_payload",
+    "xor_decode",
+    "shellcode_exec",
+    "socket_connect",
+    "recv_key",
+    "VirtualAlloc_exec"
+  ],
+  "encryption_type": "xor_single_byte",
+  "encryption_key": "received_from_c2",
+  "stages": {
+    "stage1": "TCP connect to C2, receive XOR key",
+    "stage2": "Decrypt embedded stub with received key, execute via VirtualAlloc"
+  },
+  "confidence": 0.92,
+  "difficulty": 5,
+  "description": "Two-stage payload (Windows). Stage 1 connects to C2 and receives single-byte XOR key. Stage 2 decrypts stub, allocates RWX with VirtualAlloc, executes. Same pattern as ELF multistage."
+}

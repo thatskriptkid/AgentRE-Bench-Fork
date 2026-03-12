@@ -1,0 +1,32 @@
+{
+  "sample": "pe_level12",
+  "file_type": "PE32+",
+  "encoded_strings": false,
+  "decoded_c2": "192.168.1.100:4444",
+  "c2_ip": "192.168.1.100",
+  "c2_port": 4444,
+  "c2_protocol": "TCP",
+  "techniques": [
+    "jit_compilation",
+    "VirtualAlloc_exec",
+    "self_modifying_code",
+    "runtime_patching",
+    "socket_connect",
+    "stdhandle_redirect",
+    "CreateProcess_shell"
+  ],
+  "jit_details": {
+    "memory_allocation": "VirtualAlloc RWX",
+    "shellcode_template": "stub with patchable bytes",
+    "runtime_patches": {
+      "ip_offset": "0",
+      "port_offset": "4",
+      "patched_ip": "192.168.1.100 (\\xc0\\xa8\\x01\\x64)",
+      "patched_port": "4444 (\\x11\\x5c)"
+    }
+  },
+  "shell_path": "cmd.exe",
+  "confidence": 0.93,
+  "difficulty": 12,
+  "description": "JIT-style execution (Windows). VirtualAlloc RWX, copies template, patches IP/port at runtime, executes. Then Winsock connect and CreateProcess cmd.exe. Same conceptual pattern as ELF level12."
+}

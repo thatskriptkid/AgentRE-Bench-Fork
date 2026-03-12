@@ -21,6 +21,7 @@ class AgentLoop:
         max_tool_calls: int = 25,
         max_tokens: int = 4096,
         verbose: bool = False,
+        allowed_tools: list[str] | None = None,
     ):
         self.provider = provider
         self.tool_executor = tool_executor
@@ -29,6 +30,7 @@ class AgentLoop:
         self.max_tool_calls = max_tool_calls
         self.max_tokens = max_tokens
         self.verbose = verbose
+        self.allowed_tools = allowed_tools
 
         self.messages: list[dict] = []
         self.tool_call_count = 0
@@ -50,7 +52,7 @@ class AgentLoop:
 
     def run(self) -> dict[str, Any]:
         start_time = time.time()
-        tools = get_tool_schemas(include_final_answer=True)
+        tools = get_tool_schemas(include_final_answer=True, allowed_tools=self.allowed_tools)
 
         # Initial user message
         self.messages.append({

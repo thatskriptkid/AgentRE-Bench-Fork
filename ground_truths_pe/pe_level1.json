@@ -1,0 +1,18 @@
+{
+  "sample": "pe_level1",
+  "file_type": "PE32+",
+  "encoded_strings": false,
+  "decoded_c2": "192.168.1.100:4444",
+  "c2_ip": "192.168.1.100",
+  "c2_port": 4444,
+  "c2_protocol": "TCP",
+  "techniques": [
+    "socket_connect",
+    "stdhandle_redirect",
+    "CreateProcess_shell"
+  ],
+  "shell_path": "cmd.exe",
+  "confidence": 0.99,
+  "difficulty": 1,
+  "description": "Basic TCP reverse shell (Windows). Plaintext C2 address. Uses Winsock, connects to C2, sets stdin/stdout/stderr to socket via STARTUPINFO, launches cmd.exe with CreateProcess."
+}
