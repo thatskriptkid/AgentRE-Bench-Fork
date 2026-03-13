@@ -188,6 +188,8 @@ docker run --rm --platform linux/amd64 \
 
 ### Available Tools
 
+**ELF (Linux, default):**
+
 | Tool | Description |
 |------|-------------|
 | `file` | File type identification |
@@ -198,6 +200,20 @@ docker run --rm --platform linux/amd64 \
 | `hexdump` | Hex + ASCII dump at specific offsets |
 | `xxd` | Hex dump (alternative format) |
 | `entropy` | Shannon entropy per sliding window (detects encrypted/compressed data) |
+
+**PE (Windows, `--platform pe`):**  
+Instead of `readelf` / `objdump` / `nm` / `entropy`, the agent uses PE-specific tools:
+
+| Tool | Description |
+|------|-------------|
+| `file` | File type identification (same as ELF) |
+| `strings` | Extract printable strings (same as ELF) |
+| `peinfo` | PE headers, sections, optional headers (via `pefile`) |
+| `pedisasm` | Disassembly of PE code sections |
+| `pesymbols` | Import/export and symbol information |
+| `pe_entropy` | Shannon entropy per section (detects packed/encrypted regions) |
+| `hexdump` | Hex + ASCII dump at specific offsets |
+| `xxd` | Hex dump (alternative format) |
 
 Plus `final_answer` — a structured submission tool the agent calls when done.
 
